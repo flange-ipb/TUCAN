@@ -1,11 +1,13 @@
+import operator
+
 import networkx as nx
 import random
 
 
-def sort_molecule_by_attribute(m, attribute):
+def sort_molecule_by_attribute(m, attribute, sort_definitions):
     """Sort atoms by attribute."""
     attr_with_labels = [
-        (attribute_sequence(atom, m, attribute), atom) for atom in m
+        (attribute_sequence(atom, m, attribute, sort_definitions), atom) for atom in m
     ]  # [(A, 0), (C, 1), (B, 2)]
     sorted_attr, labels_sorted_by_attr = zip(
         *sorted(attr_with_labels)
@@ -13,11 +15,13 @@ def sort_molecule_by_attribute(m, attribute):
     return relabel_molecule(m, labels_sorted_by_attr, list(range(m.number_of_nodes())))
 
 
-def attribute_sequence(atom, m, attribute):
+def attribute_sequence(atom, m, attribute, sort_definitions):
     attr_atom = m.nodes[atom][attribute]
-    attr_neighbors = sorted(
-        [m.nodes[n][attribute] for n in m.neighbors(atom)], reverse=True
-    )
+
+    attr_neighbors = [m.nodes[n][attribute] for n in m.neighbors(atom)]
+    for sort_def in reversed(sort_definitions):
+        attr_neighbors = sorted(attr_neighbors, key=operator.itemgetter(sort_def["node_attribute_key"]), reverse=sort_def["reverse"])
+
     return [attr_atom] + attr_neighbors
 
 

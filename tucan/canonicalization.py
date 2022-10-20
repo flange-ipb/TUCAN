@@ -4,8 +4,8 @@ from igraph import Graph as iGraph
 from itertools import pairwise
 
 
-def partition_molecule_by_attribute(m, attribute):
-    m_sorted = sort_molecule_by_attribute(m, attribute)
+def partition_molecule_by_attribute(m, attribute, sort_definitions):
+    m_sorted = sort_molecule_by_attribute(m, attribute, sort_definitions)
     sorted_indices = sorted(m_sorted)
     attribute_sequences = [
         attribute_sequence(a, m_sorted, attribute) for a in sorted_indices
@@ -65,18 +65,31 @@ def assign_canonical_labels(m):
     return dict(zip(old_labels, canonical_labels))
 
 
-def _add_invariant_code(m):
+def _add_invariant_code(m, invariant_code_definitions):
     """Assign an invariant code to each atom (mutates graph)."""
-    atomic_numbers = list(nx.get_node_attributes(m, "atomic_number").values())
+    invariant_codes = [
+        {
+            (key := definition["node_attribute_key"]): attributes[key] for definition in invariant_code_definitions
+        } for _, attributes in m.nodes(data=True)
+    ]
+
     nx.set_node_attributes(
-        m, dict(zip(list(m.nodes), atomic_numbers)), "invariant_code"
+        m, dict(zip(list(m.nodes), invariant_codes)), "invariant_code"
     )
 
 
+def _invariant_code_definition(attribute_key, reverse=False):
+    return {"node_attribute_key": attribute_key, "reverse": reverse}
+
+
 def canonicalize_molecule(m):
-    _add_invariant_code(m)
+    invariant_code_definitions = [
+        _invariant_code_definition("atomic_number", True),
+    ]
+
+    _add_invariant_code(m, invariant_code_definitions)
     m_partitioned_by_invariant_code = partition_molecule_by_attribute(
-        m, "invariant_code"
+        m, "invariant_code", invariant_code_definitions
     )
     m_refined = list(refine_partitions(m_partitioned_by_invariant_code))
     m_partitioned = m_refined[-1] if m_refined else m_partitioned_by_invariant_code
